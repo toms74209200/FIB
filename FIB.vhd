@@ -73,6 +73,7 @@ frst_trm <= null_i + 1;
 -- ***********************************************************
 sum <= reg1 + reg2;
 
+
 process (CLK, nRST) begin
 	if (nRST = '0') then
 		reg1 <= (others => '0');
@@ -80,10 +81,10 @@ process (CLK, nRST) begin
 	elsif (CLK'event and CLK = '1') then
 		if (reg_rst = '1') then
 			reg1 <= frst_trm;
-			reg2 <= frst_trm;
+			reg2 <= (others => '0');
 		elsif (go_i = '1') then
 			reg1 <= frst_trm;
-			reg2 <= frst_trm;
+			reg2 <= (others => '0');
 		elsif (ena_i = '1') then
 			if (done_i = '1') then
 				reg1 <= reg1;
@@ -146,7 +147,7 @@ go_i <= WDAT(0) when (CS = '1' and WR = '1' and ADDR = CtrlAddr) else '0';
 -- ***********************************************************
 --	Calculation done flag
 -- ***********************************************************
-done_i <= '0' when (go_i = '0') else
+done_i <= '0' when (go_i = '1') else
 		  '1' when (cnt = arg_n - 1) else
 		  '1' when (arg_n = 0) else
 		  '0';
@@ -202,7 +203,7 @@ ctrl_reg <= (X"0000" & arg_n & B"0000_00" & over_flow & done_i)
 -- ***********************************************************
 --	Data regiser
 -- ***********************************************************
-data_reg <= reg2
+data_reg <= reg1
 			when (CS = '1' and RD = '1' and ADDR = DataAddr) else (others => '0');
 
 
