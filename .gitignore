@@ -1,0 +1,12 @@
+###############################################################################
+# Title     : Fibonacci function
+# Auther    : toms74209200 <https://github.com/toms74209200>
+# Created   : 2020/01/29
+# License   : MIT License.
+#             http://opensource.org/licenses/mit-license.php
+###############################################################################
+# ModelSim generete
+modelsim.ini
+rtl_work/*
+transcript
+*.wlf
