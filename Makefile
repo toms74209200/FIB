@@ -1,4 +1,3 @@
-
 ###############################################################################
 # Title		: Fibonacci function
 # Auther	: toms74209200 <https://github.com/toms74209200>
@@ -37,7 +36,7 @@ check: ./rtl_work/
 #	vcom.exe -93 $(MODELSIM_LIB_FLAGS) $(PLD_DIR)/PAC_*.vhd
 	vcom.exe -93 $(MODELSIM_LIB_FLAGS) $(PLD_DIR)/*.vhd
 	vlog.exe -sv $(MODELSIM_LIB_FLAGS) +incdir+$(TB_DIR) $(TB_SRC)
-	vsim.exe -c -msgmode both -displaymsgmode both TB_$(PROJECT) $(MODELSIM_DO_FLAGS)
+	vsim.exe -c $(MODELSIM_SIM_FLAGS) -msgmode both -displaymsgmode both TB_$(PROJECT) $(MODELSIM_DO_FLAGS)
 
 ./rtl_work/: $(TB_SRC)
 	$(if $(lib_exist),vdel.exe -lib rtl_work -all)
