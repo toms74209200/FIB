@@ -28,9 +28,9 @@ module TB_FIB ;
 // Simulation module signal
 bit         RESET_n;            //(n) Reset
 bit         CLK;                //(p) Clock
-bit         ASI_READY;          //(p) Avalon-ST sink data ready
-bit         ASI_VALID;          //(p) Avalon-ST sink data valid
-bit [31:0]  ASI_DATA;           //(p) Avalon-ST sink data
+bit         ASI_READY = 0;      //(p) Avalon-ST sink data ready
+bit         ASI_VALID = 0;      //(p) Avalon-ST sink data valid
+bit [31:0]  ASI_DATA  = 0;      //(p) Avalon-ST sink data
 bit         ASO_VALID;          //(p) Avalon-ST source data valid
 bit [31:0]  ASO_DATA;           //(p) Avalon-ST source data
 bit         ASO_ERROR;          //(p) Avalon-ST source error
@@ -57,10 +57,8 @@ FIB U_FIB(
  * Clock
  *============================================================================*/
 always begin
-    CLK = 0;
     #(ClkCyc);
-    CLK = 1;
-    #(ClkCyc);
+    CLK = ~CLK;
 end
 
 
@@ -68,7 +66,6 @@ end
  * Reset
  *============================================================================*/
 initial begin
-    RESET_n = 0;
     #(ResetTime);
     RESET_n = 1;
 end 
@@ -141,7 +138,7 @@ initial begin
 /*=============================================================================
  * Normal data check
  *============================================================================*/
-    $display("Normal data check");
+    $display("%0s(%0d)Normal data check", `__FILE__, `__LINE__);
     for (int i=1;i<48;i++) begin
         wait(ASI_READY);
         ASI_VALID = 1'b1;
@@ -160,7 +157,7 @@ initial begin
 /*=============================================================================
  * Error check
  *============================================================================*/
-    $display("Error check");
+    $display("%0s(%0d)Error check", `__FILE__, `__LINE__);
     wait(ASI_READY);
     ASI_VALID = 1'b1;
     ASI_DATA = 0;
