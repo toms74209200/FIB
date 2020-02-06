@@ -38,19 +38,19 @@ end FIB;
 architecture RTL of FIB is
 
 -- Internal signals --
-signal  null_i      : std_logic_vector(DW-1 downto 0);              -- null
-signal  first_term  : std_logic_vector(DW-1 downto 0);              -- Fibonacci first term
-signal  fn          : std_logic_vector(DW   downto 0);              -- F_n
-signal  fnm1        : std_logic_vector(DW-1 downto 0);              -- F_n-1
-signal  fnm2        : std_logic_vector(DW-1 downto 0);              -- F_n-2
+signal  null_i         : std_logic_vector(DW-1 downto 0);           -- null
+signal  first_term     : std_logic_vector(DW-1 downto 0);           -- Fibonacci first term
+signal  fn             : std_logic_vector(DW   downto 0);           -- F_n
+signal  fnm1           : std_logic_vector(DW-1 downto 0);           -- F_n-1
+signal  fnm2           : std_logic_vector(DW-1 downto 0);           -- F_n-2
 
-signal  calc_n      : std_logic_vector(5 downto 0);                 -- Calculation end count N
-signal  n_over      : std_logic;                                    -- Count N overflow
-signal  over_flow   : std_logic;                                    -- Bit overflow assert
-signal  start_i     : std_logic;                                    -- Calculation start
-signal  done_i      : std_logic;                                    -- Calculation done flag
-signal  busy_i      : std_logic;                                    -- Calculation enable
-signal  cnt         : std_logic_vector(calc_n'range);               -- Calculation count
+signal  calc_n         : std_logic_vector(5 downto 0);              -- Calculation end count N
+signal  n_over         : std_logic;                                 -- Count N overflow
+signal  over_flow      : std_logic;                                 -- Bit overflow assert
+signal  over_flow_reg  : std_logic;                                 -- Bit overflow assert
+signal  done_i         : std_logic;                                 -- Calculation done flag
+signal  busy_i         : std_logic;                                 -- Calculation enable
+signal  cnt            : std_logic_vector(calc_n'range);            -- Calculation count
 
 begin
 --
@@ -73,9 +73,6 @@ process (CLK, RESET_n) begin
         fnm2 <= (others => '0');
     elsif (CLK'event and CLK = '1') then
         if (busy_i = '0' and ASI_VALID = '1') then
-            fnm1 <= first_term;
-            fnm2 <= first_term;
-        elsif (start_i = '1') then
             fnm1 <= first_term;
             fnm2 <= first_term;
         elsif (busy_i = '1') then
@@ -125,45 +122,33 @@ end process;
 -- ============================================================================
 --  Bit over flow assert
 -- ============================================================================
-over_flow <= '1' when (fn(fn'left) = '1') else '0';
-
-ASO_ERROR <= over_flow or n_over;
-
-
--- ============================================================================
---  Calculation start
--- ============================================================================
 process (CLK, RESET_n) begin
     if (RESET_n = '0') then
-        start_i <= '0';
+        over_flow_reg <= '0';
     elsif (CLK'event and CLK = '1') then
-        if (busy_i = '0') then
-            start_i <= ASI_VALID;
+        if (busy_i = '1') then
+            if (cnt < calc_n) then
+                if (fn(fn'left) = '1') then
+                    over_flow_reg <= '1';
+                end if;
+            end if;
+        else
+            over_flow_reg <= '0';
         end if;
     end if;
 end process;
+
+over_flow <= '1' when (fn(fn'left) = '1') else '0';
+
+ASO_ERROR <= over_flow or over_flow_reg or n_over;
 
 
 -- ============================================================================
 --  Calculation end
 -- ============================================================================
-process (CLK, RESET_n) begin
-    if (RESET_n = '0') then
-        done_i <= '0';
-    elsif (CLK'event and CLK = '1') then
-        if (ASI_VALID = '1') then
-            done_i <= '0';
-        elsif (busy_i = '1') then
-            if (cnt > calc_n - 1) then
-                done_i <= '1';
-            elsif (calc_n < 3) then
-                done_i <= '1';
-            end if;
-        else
-            done_i <= '0';
-        end if;
-    end if;
-end process;
+done_i <= '1' when (busy_i = '1' and cnt > calc_n - 1) else
+          '1' when (busy_i = '1' and calc_n < 3) else
+          '0';
 
 ASO_VALID <= done_i;
 
@@ -177,7 +162,7 @@ process (CLK, RESET_n) begin
     elsif (CLK'event and CLK = '1') then
         if (done_i = '1') then
             busy_i <= '0';
-        elsif (start_i = '1') then
+        elsif (ASI_VALID = '1') then
             busy_i <= '1';
         end if;
     end if;
@@ -193,14 +178,14 @@ process (CLK, RESET_n) begin
     if (RESET_n = '0') then
         cnt <= (others => '0');
     elsif (CLK'event and CLK = '1') then
-        if (start_i = '1') then
-            cnt <= B"00_0011";
-        elsif (busy_i = '1') then
+        if (busy_i = '1') then
             if (done_i = '1') then
                 cnt <= cnt;
             else
                 cnt <= cnt + 1;
             end if;
+        elsif (ASI_VALID = '1') then
+            cnt <= B"00_0011";
         end if;
     end if;
 end process;
