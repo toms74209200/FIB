@@ -40,13 +40,12 @@ architecture RTL of FIB is
 -- Internal signals --
 signal  null_i      : std_logic_vector(DW-1 downto 0);              -- null
 signal  first_term  : std_logic_vector(DW-1 downto 0);              -- Fibonacci first term
-signal  sum         : std_logic_vector(DW   downto 0);              -- F_n
-signal  reg1        : std_logic_vector(DW-1 downto 0);              -- F_n-1
-signal  reg2        : std_logic_vector(DW-1 downto 0);              -- F_n-2
+signal  fn          : std_logic_vector(DW   downto 0);              -- F_n
+signal  fnm1        : std_logic_vector(DW-1 downto 0);              -- F_n-1
+signal  fnm2        : std_logic_vector(DW-1 downto 0);              -- F_n-2
 
 signal  calc_n      : std_logic_vector(5 downto 0);                 -- Calculation end count N
 signal  n_over      : std_logic;                                    -- Count N overflow
-signal  over_check  : std_logic_vector(DW-1 downto 0);              -- Overflow check value
 signal  over_flow   : std_logic;                                    -- Bit overflow assert
 signal  start_i     : std_logic;                                    -- Calculation start
 signal  done_i      : std_logic;                                    -- Calculation done flag
@@ -65,32 +64,34 @@ first_term <= null_i + 1;
 -- ============================================================================
 --  Fibonacci calculation
 -- ============================================================================
-sum <= ('0' & reg1) + ('0' & reg2);
+-- F_n = F_n-1 + F_n-2
+fn <= ('0' & fnm1) + ('0' & fnm2);
 
 process (CLK, RESET_n) begin
     if (RESET_n = '0') then
-        reg1 <= (others => '0');
-        reg2 <= (others => '0');
+        fnm1 <= (others => '0');
+        fnm2 <= (others => '0');
     elsif (CLK'event and CLK = '1') then
         if (busy_i = '0' and ASI_VALID = '1') then
-            reg1 <= first_term;
-            reg2 <= (others => '0');
+            fnm1 <= first_term;
+            fnm2 <= first_term;
         elsif (start_i = '1') then
-            reg1 <= first_term;
-            reg2 <= (others => '0');
+            fnm1 <= first_term;
+            fnm2 <= first_term;
         elsif (busy_i = '1') then
             if (done_i = '1') then
-                reg1 <= reg1;
-                reg2 <= reg2;
+                fnm1 <= fnm1;
+                fnm2 <= fnm2;
             else
-                reg1 <= sum(reg1'range);
-                reg2 <= reg1;
+                fnm1 <= fn(fnm1'range);
+                fnm2 <= fnm1;
             end if;
         end if;
     end if;
 end process;
 
-ASO_DATA <= reg1;
+ASO_DATA <= first_term when (calc_n < 3) else 
+            fn(ASO_DATA'range);
 
 
 -- ============================================================================
@@ -124,17 +125,7 @@ end process;
 -- ============================================================================
 --  Bit over flow assert
 -- ============================================================================
-process (CLK, RESET_n) begin
-    if (RESET_n = '0') then
-        over_flow <= '0';
-    elsif (CLK'event and CLK = '1') then
-        if (start_i = '1') then
-            over_flow <= '0';
-        elsif (sum(sum'left) = '1') then
-            over_flow <= '1';
-        end if;
-    end if;
-end process;
+over_flow <= '1' when (fn(fn'left) = '1') else '0';
 
 ASO_ERROR <= over_flow or n_over;
 
@@ -156,10 +147,23 @@ end process;
 -- ============================================================================
 --  Calculation end
 -- ============================================================================
-done_i <= '0' when (start_i = '1') else
-          '1' when (cnt = calc_n - 1) else
-          '1' when (calc_n = 0) else
-          '0';
+process (CLK, RESET_n) begin
+    if (RESET_n = '0') then
+        done_i <= '0';
+    elsif (CLK'event and CLK = '1') then
+        if (ASI_VALID = '1') then
+            done_i <= '0';
+        elsif (busy_i = '1') then
+            if (cnt > calc_n - 1) then
+                done_i <= '1';
+            elsif (calc_n < 3) then
+                done_i <= '1';
+            end if;
+        else
+            done_i <= '0';
+        end if;
+    end if;
+end process;
 
 ASO_VALID <= done_i;
 
@@ -190,7 +194,7 @@ process (CLK, RESET_n) begin
         cnt <= (others => '0');
     elsif (CLK'event and CLK = '1') then
         if (start_i = '1') then
-            cnt <= (others => '0');
+            cnt <= B"00_0011";
         elsif (busy_i = '1') then
             if (done_i = '1') then
                 cnt <= cnt;
